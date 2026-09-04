@@ -1,0 +1,42 @@
+from flask import Flask, redirect, render_template, request, session, url_for, models
+
+
+app = Flask(__name__)
+app.secret_key = "chave-da-livraria"
+
+@app.route("/")
+def index():
+	query = request.args.get("q", "").strip()
+	livros = models.buscar_livros(query)
+	return render_template("index.html", livros=livros, query=query)
+
+
+@app.route("/livro/<int:livro_id>")
+def livro(livro_id):
+	livro_encontrado = models.buscar_livro(livro_id)
+	if livro_encontrado is None:
+		return "Livro não encontrado", 404
+
+	resenhas = models.resenhas_do_livro(livro_id)
+	return render_template(
+		"livro.html", livro=livro_encontrado, resenhas=resenhas
+	)
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+	erro = None
+	if request.method == "POST":
+		nome = request.form.get("nome", "").strip()
+		senha = request.form.get("senha", "")
+		usuario = next(
+			(item for item in models.usuarios
+			 if item["nome"] == nome and item["senha"] == senha),
+			None,
+		)
+		if usuario is not None:
+			session["usuario"] = usuario["nome"]
+			return redirect(url_for("index"))
+		erro = "Nome ou senha inválidos."
+
+	return render_template("login.html", erro=erro)
